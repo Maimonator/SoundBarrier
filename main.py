@@ -56,51 +56,70 @@ class SoundPlot(object):
 
 class SoundBarrier(object):
     """docstring for SoundBarrier"""
+    NUM_OF_GRAPHS = 3
 
     def __init__(self, input, output=None):
         super(SoundBarrier, self).__init__()
-
+        self.input = input
         self.filename, _ = os.path.splitext(os.path.basename(input))
 
         if output is not None:
             self.output = output
         else:
             self.output = os.path.dirname(input)
-        self.audio_time_series, self.samplerate = librosa.load(input)
+
+    def __enter__(self):
+        self.ats, self.samplerate = librosa.load(self.input)
+        self.tempo = librosa.beat.tempo(y=self.ats, sr=self.samplerate)
+        self.ats_harmonic, self.ats_percussive = librosa.effects.hpss(self.ats)
+
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        pass
 
     def get_bpm(self):
         tempo = librosa.beat.tempo(
-            y=self.audio_time_series, sr=self.samplerate)
-        print self.samplerate
+            y=self.ats, sr=self.samplerate)
         return tempo
 
-    def get_song_graph(self):
-        ats_harmonic, ats_percussive = librosa.effects.hpss(
-            self.audio_time_series)
+    @staticmethod
+    def ats_to_db(ats):
+        return librosa.power_to_db(librosa.feature.melspectrogram(ats),
+                                   ref=np.max)
 
+    def append_perc_harm_graphs(self, sp):
         # Convert to log scale (db).
-        mel_harmonic = librosa.feature.melspectrogram(ats_harmonic)
-        mel_percussive = librosa.feature.melspectrogram(ats_percussive)
-        log_harmonic = librosa.power_to_db(mel_harmonic, ref=np.max)
-        log_percussive = librosa.power_to_db(mel_percussive, ref=np.max)
+        db_harmonic = SoundBarrier.ats_to_db(self.ats_harmonic)
+        db_percussive = SoundBarrier.ats_to_db(self.ats_percussive)
 
-        with SoundPlot() as sp:
-            sp.append('{} Harmonic'.format(self.filename), log_harmonic,
-                      self.samplerate,
-                      colorbar_format=SoundPlot.COLORBAR_FORMAT_DB)
-            sp.append('{} Percussive'.format(self.filename), log_percussive,
-                      self.samplerate,
-                      colorbar_format=SoundPlot.COLORBAR_FORMAT_DB)
-            sp.save_svg(os.path.join(self.output, self.filename + ".svg"))
+        sp.append('{} Harmonic'.format(self.filename), db_harmonic,
+                  self.samplerate,
+                  colorbar_format=SoundPlot.COLORBAR_FORMAT_DB)
+
+        sp.append('{} Percussive'.format(self.filename), db_percussive,
+                  self.samplerate,
+                  colorbar_format=SoundPlot.COLORBAR_FORMAT_DB)
+
+    def append_chromagram(self, sp):
+        c = librosa.feature.chroma_cqt(y=self.ats_harmonic, sr=self.samplerate)
+        sp.append('{} Chroma'.format(self.filename), c,
+                  self.samplerate, y_axis='chroma', vmin=0, vmax=1)
+
+    def get_song_graph(self):
+        with SoundPlot(SoundBarrier.NUM_OF_GRAPHS) as sp:
+            self.append_perc_harm_graphs(sp)
+            self.append_chromagram(sp)
+
+        sp.save_svg(os.path.join(self.output, self.filename + ".svg"))
 
     def __eq__(self, other):
         return self.get_bpm() == other.get_bpm()
 
 
 def get_song_info(args):
-    sb = SoundBarrier(args.input, args.output)
-    # print "the BPM of the song {} is {}".format(sb.filename, sb.get_bpm())
-    sb.get_song_graph()
+    with SoundBarrier(args.input, args.output) as sb:
+        sb.get_song_graph()
 
 
 def main():
