@@ -7,38 +7,43 @@ import numpy as np
 # matplotlib for displaying the output
 import matplotlib.pyplot as plt
 import matplotlib.style as ms
+import librosa
+import librosa.display
+
 ms.use('seaborn-muted')
 
-# IPython.display for audio output
-import IPython.display
-
 # Librosa for audio
-import librosa
-# display module for visualization
-import librosa.display
 
 
 class SoundPlot(object):
     """docstring for SoundPlot"""
     COLORBAR_FORMAT_DB = '%+02.0f dB'
+    MAX_NUMBER_OF_PLOTS = 10
 
-    def __init__(self):
+    def __init__(self, num_of_rows, fig_width=6, fig_height=6):
         super(SoundPlot, self).__init__()
+        self.num_of_rows = num_of_rows
+        self.fig_width = fig_width
+        self.fig_height = fig_height
 
     def __enter__(self):
-        self.fig = plt.figure(figsize=(12, 6))
+        self.fig = plt.figure()
         self.subplot_index = 1
         return self
 
     def append(self, title, data, samplerate,
-               x_axis='time', y_axis='mel', colorbar_format=None):
+               x_axis='time', y_axis='mel', colorbar_format=None, **kwargs):
 
-        self.fig.add_subplot(2, 1, self.subplot_index)
+        self.fig.set_size_inches(self.fig_width,
+                                 self.subplot_index * self.fig_height)
+
+        subplot = self.fig.add_subplot(self.num_of_rows, 1, self.subplot_index)
         self.subplot_index += 1
 
         librosa.display.specshow(data, sr=samplerate,
-                                 x_axis=x_axis, y_axis=y_axis)
-        plt.title(title)
+                                 x_axis=x_axis, y_axis=y_axis, **kwargs)
+
+        subplot.title.set_text(title)
         plt.colorbar(format=colorbar_format)
 
     def save_svg(self, output):
