@@ -2,7 +2,7 @@ import os
 import numpy as np
 import librosa
 
-from soundplot import SoundPlot
+from soundplot import SoundPlot, PlotContainer
 
 
 class SoundBarrier(object):
@@ -38,33 +38,50 @@ class SoundBarrier(object):
         return librosa.power_to_db(librosa.feature.melspectrogram(ats),
                                    ref=np.max)
 
-    def append_perc_harm_graphs(self, sp):
-        # Convert to log scale (db).
-        db_harmonic = SoundBarrier.ats_to_db(self.ats_harmonic)
+    def get_percussive_plot(self):
         db_percussive = SoundBarrier.ats_to_db(self.ats_percussive)
 
-        sp.append('{} Harmonic'.format(self.filename), db_harmonic,
-                  self.samplerate,
-                  colorbar_format=SoundPlot.COLORBAR_FORMAT_DB)
+        plot_obj = PlotContainer('{} Percussive'.format(self.filename),
+                                 db_percussive,
+                                 SoundPlot.COLORBAR_FORMAT_DB,
+                                 x_axis='time',
+                                 y_axis='mel'
+                                 )
 
-        sp.append('{} Percussive'.format(self.filename), db_percussive,
-                  self.samplerate,
-                  colorbar_format=SoundPlot.COLORBAR_FORMAT_DB)
+        return plot_obj
 
-    def append_chromagram(self, sp):
+    def get_harmonic_plot(self):
+        db_harmonic = SoundBarrier.ats_to_db(self.ats_harmonic)
+
+        plot_obj = PlotContainer('{} Harmonic'.format(self.filename),
+                                 db_harmonic,
+                                 SoundPlot.COLORBAR_FORMAT_DB,
+                                 x_axis='time',
+                                 y_axis='mel'
+                                 )
+
+        return plot_obj
+
+    def get_chroma_plot(self):
         chroma = librosa.feature.chroma_cqt(
             y=self.ats_harmonic, sr=self.samplerate)
         c_sync = librosa.util.sync(chroma, self.beats, aggregate=np.median)
         fixed_beats = librosa.util.fix_frames(self.beats)
 
-        sp.append('{} beat synchronous chroma'.format(self.filename), c_sync,
-                  self.samplerate, y_axis='chroma', vmin=0.0, vmax=1.0,
-                  x_coords=librosa.frames_to_time(fixed_beats))
+        plot_obj = PlotContainer('{} Beat Sync Chroma'.format(self.filename),
+                                 c_sync,
+                                 y_axis='chroma',
+                                 vmin=0.0,
+                                 vmax=1.0,
+                                 x_coords=librosa.frames_to_time(fixed_beats)
+                                 )
+        return plot_obj
 
     def get_song_graph(self):
-        with SoundPlot(SoundBarrier.NUM_OF_GRAPHS) as sp:
-            self.append_perc_harm_graphs(sp)
-            self.append_chromagram(sp)
+        with SoundPlot(SoundBarrier.NUM_OF_GRAPHS, self.samplerate) as sp:
+            sp.append(self.get_percussive_plot())
+            sp.append(self.get_harmonic_plot())
+            sp.append(self.get_chroma_plot())
 
         sp.save_svg(os.path.join(self.output, self.filename + ".svg"))
 
