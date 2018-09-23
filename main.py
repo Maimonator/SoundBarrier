@@ -70,8 +70,9 @@ class SoundBarrier(object):
 
     def __enter__(self):
         self.ats, self.samplerate = librosa.load(self.input)
-        self.tempo = librosa.beat.tempo(y=self.ats, sr=self.samplerate)
         self.ats_harmonic, self.ats_percussive = librosa.effects.hpss(self.ats)
+        self.tempo, self.beats = librosa.beat.beat_track(
+            y=self.ats_percussive, sr=self.samplerate)
 
         return self
 
@@ -79,9 +80,7 @@ class SoundBarrier(object):
         pass
 
     def get_bpm(self):
-        tempo = librosa.beat.tempo(
-            y=self.ats, sr=self.samplerate)
-        return tempo
+        return self.tempo
 
     @staticmethod
     def ats_to_db(ats):
@@ -102,9 +101,14 @@ class SoundBarrier(object):
                   colorbar_format=SoundPlot.COLORBAR_FORMAT_DB)
 
     def append_chromagram(self, sp):
-        c = librosa.feature.chroma_cqt(y=self.ats_harmonic, sr=self.samplerate)
-        sp.append('{} Chroma'.format(self.filename), c,
-                  self.samplerate, y_axis='chroma', vmin=0, vmax=1)
+        chroma = librosa.feature.chroma_cqt(
+            y=self.ats_harmonic, sr=self.samplerate)
+        c_sync = librosa.util.sync(chroma, self.beats, aggregate=np.median)
+        fixed_beats = librosa.util.fix_frames(self.beats)
+
+        sp.append('{} beat synchronous chroma'.format(self.filename), c_sync,
+                  self.samplerate, y_axis='chroma', vmin=0.0, vmax=1.0,
+                  x_coords=librosa.frames_to_time(fixed_beats))
 
     def get_song_graph(self):
         with SoundPlot(SoundBarrier.NUM_OF_GRAPHS) as sp:
@@ -119,6 +123,7 @@ class SoundBarrier(object):
 
 def get_song_info(args):
     with SoundBarrier(args.input, args.output) as sb:
+        print "BPM is " + str(sb.get_bpm())
         sb.get_song_graph()
 
 
