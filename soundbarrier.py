@@ -83,7 +83,9 @@ class SoundBarrier(object):
             sp.append(self.get_harmonic_plot())
             sp.append(self.get_chroma_plot())
 
-        sp.save_svg(os.path.join(self.output, self.filename + ".svg"))
+        outpath = os.path.join(self.output, self.filename + ".svg")
+        sp.save_svg(outpath)
+        return outpath
 
     def __eq__(self, other):
         return self.get_bpm() == other.get_bpm()
