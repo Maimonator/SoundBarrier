@@ -4,11 +4,15 @@ from soundbarrier import SoundBarrier
 
 
 def get_song_info(args):
-    with SoundBarrier(args.input) as sb:
-        if args.bpm:
-            print "Song bpm is {}".format(sb.get_bpm())
-        if args.graph:
-            print "Graph was saved to \"{}\"".format(sb.get_song_graph())
+    for path in args.input:
+        with SoundBarrier(path) as sb:
+            if args.bpm:
+                print "{} bpm is {}".format(sb.filename, sb.get_bpm())
+            if args.graph:
+                print "{} graph saved to \"{}\"".format(sb.filename,
+                                                        sb.get_song_graph())
+
+            print "======================="
 
 
 def main():
@@ -19,7 +23,7 @@ this program analyzes music woot woot.
 """)
 
     parser.add_argument(
-        "--input", "-i", help="input file to analyze", required=True)
+        "input", help="input file to analyze", nargs="+")
     parser.add_argument(
         "--output", "-o", help="output dir to write files to")
 
