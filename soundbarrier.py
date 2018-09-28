@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import librosa
+from scipy import fftpack
 
 from soundplot import SoundPlot, DataPlot
 
@@ -101,6 +102,44 @@ class SoundBarrierItem(object):
     def ats_to_db(ats):
         return librosa.power_to_db(librosa.feature.melspectrogram(ats),
                                    ref=np.max)
+
+    def get_strength_onset(self):
+        strength_onset = librosa.onset.onset_strength(self.ats_percussive,
+                                                      sr=self.samplerate,
+                                                      aggregate=np.median)
+
+        return strength_onset
+
+    @staticmethod
+    def find_frame_diff_lag(arr1, arr2):
+        """
+        This function returns how much arr2 should be rotated right
+        for maximum correlation
+        """
+
+        fft_arr1 = fftpack.fft(arr1)
+        fft_arr2 = fftpack.fft(arr2)
+        conjugated_arr2 = -fft_arr2.conjugate()
+        return np.argmax(np.abs(fftpack.ifft(fft_arr1 * conjugated_arr2)))
+
+    @staticmethod
+    def compute_normalized_correlation(arr1, arr2):
+        d_corr = np.sqrt(
+            sum(arr1 ** 2) *
+            sum(arr2 ** 2))
+        return float(
+            np.correlate(arr1, arr2, 'valid') / d_corr)
+
+    def compare_to(self, other):
+        smaller_onset, larger_onset = sorted((self.get_strength_onset(),
+                                              other.get_strength_onset()),
+                                             key=lambda x: len(x))
+
+        smaller_onset = np.append(smaller_onset, np.zeros(
+            len(larger_onset) - len(smaller_onset)))
+
+        return SoundBarrierItem.compute_normalized_correlation(
+            smaller_onset, larger_onset)
 
     def get_plot_output_path(self, plot_type=""):
         out_filename = "{fname}_{plot_type}.png".format(fname=self.filename,

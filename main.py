@@ -17,6 +17,13 @@ def get_song_info(args):
             print "======================="
 
 
+def compare_song(args):
+    for path in args.input:
+        with SoundBarrierItem(path) as sb1:
+            with SoundBarrierItem(args.song) as sb2:
+                print "Song score is {}".format(sb1.compare_to(sb2))
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog=os.path.basename(__file__),
@@ -46,6 +53,16 @@ this program analyzes music woot woot.
 
     info_parser.set_defaults(do=get_song_info)
 
+    diff_parser = subparsers.add_parser(
+        'diff',
+        help="gives a score between 0 to 1 on how similar the songs are")
+
+    diff_parser.add_argument(
+        '-s',
+        '--song',
+        help="song path to compare to", required=True)
+
+    diff_parser.set_defaults(do=compare_song)
     args = parser.parse_args()
     args.do(args)
 
