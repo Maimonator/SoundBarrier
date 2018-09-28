@@ -1,11 +1,11 @@
 import argparse
 import os
-from soundbarrier import SoundBarrier
+from soundbarrier import SoundBarrierItem
 
 
 def get_song_info(args):
     for path in args.input:
-        with SoundBarrier(path) as sb:
+        with SoundBarrierItem(path) as sb:
             if args.bpm:
                 print "{} bpm is {}".format(sb.filename, sb.get_bpm())
             if args.graph:

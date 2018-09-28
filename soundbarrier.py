@@ -66,15 +66,15 @@ def smooth(x, window_len=11, window='hanning'):
     return y
 
 
-class SoundBarrier(object):
-    """docstring for SoundBarrier"""
+class SoundBarrierItem(object):
+    """docstring for SoundBarrierItem"""
     PLOT_PREFIX_PERCUSSIVE = "percussive"
     PLOT_PREFIX_HARMONIC = "harmonic"
     PLOT_PREFIX_CHROMA = "chroma"
     PLOT_PREFIX_AMP = "amplitude"
 
     def __init__(self, input, output=None):
-        super(SoundBarrier, self).__init__()
+        super(SoundBarrierItem, self).__init__()
         self.input = input
         self.filename, _ = os.path.splitext(os.path.basename(input))
 
@@ -108,12 +108,12 @@ class SoundBarrier(object):
         return os.path.join(self.output, out_filename)
 
     def get_percussive_plot(self):
-        db_percussive = SoundBarrier.ats_to_db(self.ats_percussive)
+        db_percussive = SoundBarrierItem.ats_to_db(self.ats_percussive)
 
         plot_obj = SoundPlot('{} Percussive'.format(self.filename),
                              db_percussive,
                              self.get_plot_output_path(
-            SoundBarrier.PLOT_PREFIX_PERCUSSIVE),
+            SoundBarrierItem.PLOT_PREFIX_PERCUSSIVE),
             self.samplerate,
             SoundPlot.COLORBAR_FORMAT_DB,
             x_axis='time',
@@ -122,12 +122,12 @@ class SoundBarrier(object):
         return plot_obj
 
     def get_harmonic_plot(self):
-        db_harmonic = SoundBarrier.ats_to_db(self.ats_harmonic)
+        db_harmonic = SoundBarrierItem.ats_to_db(self.ats_harmonic)
 
         plot_obj = SoundPlot('{} Harmonic'.format(self.filename),
                              db_harmonic,
                              self.get_plot_output_path(
-            SoundBarrier.PLOT_PREFIX_HARMONIC),
+            SoundBarrierItem.PLOT_PREFIX_HARMONIC),
             self.samplerate,
             SoundPlot.COLORBAR_FORMAT_DB,
             x_axis='time',
@@ -145,7 +145,7 @@ class SoundBarrier(object):
         plot_obj = SoundPlot('{} Beat Sync Chroma'.format(self.filename),
                              c_sync,
                              self.get_plot_output_path(
-            SoundBarrier.PLOT_PREFIX_CHROMA),
+            SoundBarrierItem.PLOT_PREFIX_CHROMA),
             self.samplerate,
             y_axis='chroma',
             vmin=0.0,
@@ -164,7 +164,7 @@ class SoundBarrier(object):
         plot_obj = DataPlot('{} Amplitude Graph'.format(self.filename),
                             smoothed_onset,
                             self.get_plot_output_path(
-                                SoundBarrier.PLOT_PREFIX_AMP),
+                                SoundBarrierItem.PLOT_PREFIX_AMP),
                             "Amplitude")
 
         return plot_obj
