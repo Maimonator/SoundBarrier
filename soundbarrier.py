@@ -3,7 +3,7 @@ import numpy as np
 import librosa
 
 from soundplot import SoundPlot, PlotContainer
-
+# import soundfile as sf
 
 class SoundBarrier(object):
     """docstring for SoundBarrier"""
@@ -20,6 +20,10 @@ class SoundBarrier(object):
             self.output = os.path.dirname(input)
 
     def __enter__(self):
+        # self.ats, self.samplerate = sf.read(self.input, dtype='float32')
+        # self.ats = self.ats.T
+        # self.ats = librosa.core.to_mono(self.ats)
+
         self.ats, self.samplerate = librosa.load(self.input)
         self.ats_harmonic, self.ats_percussive = librosa.effects.hpss(self.ats)
         self.tempo, self.beats = librosa.beat.beat_track(
@@ -32,6 +36,9 @@ class SoundBarrier(object):
 
     def get_bpm(self):
         return self.tempo
+
+    def get_beats(self):
+        return self.beats
 
     @staticmethod
     def ats_to_db(ats):
@@ -86,6 +93,30 @@ class SoundBarrier(object):
         outpath = os.path.join(self.output, self.filename + ".svg")
         sp.save_svg(outpath)
         return outpath
+
+    def get_interval_beats(self):
+        """
+        Returns a list of the number of beats in each measurment interval in self.
+        :return: list of beat numebrs.
+        :rtype: list.
+        """
+        beats = self.get_beats()
+        interval_beats = [beats[i + 1] - beats[i] for i in xrange(len(beats) - 1)]
+        return interval_beats
+
+    def get_beat_numebr_per_interval_diff(self, other):
+        """
+        Gets another SoundBarrier object.
+        Returns, for each measurment interval, the difference between the number of beats in self and in the other object.
+        :param other: the second  SoundBarrier object.
+        :return: list of beat numebrs.
+        :rtype: list.
+        """
+    	my_beats = self.get_interval_beats()
+        other_beats = other.get_interval_beats()
+        combined_beats = zip(my_beats, other_beats)
+        diffs = map(lambda x: abs(x[0] - x[1]), combined_beats)
+        return diffs
 
     def __eq__(self, other):
         return self.get_bpm() == other.get_bpm()

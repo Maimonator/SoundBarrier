@@ -11,7 +11,6 @@ def get_song_info(args):
             if args.graph:
                 print "{} graph saved to \"{}\"".format(sb.filename,
                                                         sb.get_song_graph())
-
             print "======================="
 
 
