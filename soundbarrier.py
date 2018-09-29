@@ -7,7 +7,7 @@ from scipy import fftpack
 from soundplot import SoundPlot, DataPlot
 
 
-def smooth(x, window_len=11, window='hanning'):
+def smooth(x, window_len=51, window='hanning'):
     """Taken from https://scipy-cookbook.readthedocs.io/items/SignalSmooth.html
     smooth the data using a window with requested size.
 
@@ -107,7 +107,7 @@ class SoundBarrierItem(object):
                                    ref=np.max)
 
     def get_strength_onset(self):
-        strength_onset = librosa.onset.onset_strength(self.ats_percussive,
+        strength_onset = librosa.onset.onset_strength(self.ats,
                                                       sr=self.samplerate,
                                                       aggregate=np.median)
 
@@ -137,12 +137,13 @@ class SoundBarrierItem(object):
         smaller_onset, larger_onset = sorted((self.get_strength_onset(),
                                               other.get_strength_onset()),
                                              key=lambda x: len(x))
-
-        smaller_onset = np.append(smaller_onset, np.zeros(
-            len(larger_onset) - len(smaller_onset)))
+        smooth_1 = smooth(smaller_onset)
+        smooth_2 = smooth(larger_onset)
+        smooth_1 = np.append(smooth_1, np.zeros(
+            len(smooth_2) - len(smooth_1)))
 
         return SoundBarrierItem.compute_normalized_correlation(
-            smaller_onset, larger_onset)
+            smooth_1, smooth_2)
 
     def get_plot_output_path(self, plot_type=""):
         out_filename = "{fname}_{plot_type}.png".format(fname=self.filename,
