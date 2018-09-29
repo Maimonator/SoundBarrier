@@ -35,16 +35,13 @@ class PlotContainer(object):
 class DataPlot(PlotContainer):
     """docstring for DataPlot"""
 
-    def __init__(self, title, data, output_path, y_data, x_label, y_label):
+    def __init__(self, title, data, output_path, y_label):
         super(DataPlot, self).__init__(title, data, output_path)
-        self.y_data = y_data
-        self.x_label = x_label
         self.y_label = y_label
 
     def generate_fig(self):
-        self.ax1.set_xlabel(self.x_label)
         self.ax1.set_ylabel(self.y_label)
-        self.ax1.plot(self.data, self.y_data)
+        self.ax1.plot(self.data)
 
 
 class SoundPlot(PlotContainer):
