@@ -8,48 +8,60 @@ ms.use('seaborn-muted')
 class PlotContainer(object):
     """docstring for PlotContainer"""
 
-    def __init__(self, title, data, colorbar_format=None, **kwargs):
+    def __init__(self, title, data, output_path):
         super(PlotContainer, self).__init__()
         self.title = title
         self.data = data
-        self.colorbar_format = colorbar_format
-        self.kwargs = kwargs
+        self.output_path = output_path
+
+    def __enter__(self):
+        self.fig, self.ax1 = plt.subplots()
+        self.fig.suptitle(self.title)
+        return self
+
+    def generate_fig(self):
+        raise NotImplementedError()
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        plt.close(self.fig)
+        plt.clf()
+
+    def save_plot(self):
+        self.fig.savefig(self.output_path)
+        plt.clf()
+        return self.output_path
 
 
-class SoundPlot(object):
+class DataPlot(PlotContainer):
+    """docstring for DataPlot"""
+
+    def __init__(self, title, data, output_path, y_data, x_label, y_label):
+        super(DataPlot, self).__init__(title, data, output_path)
+        self.y_data = y_data
+        self.x_label = x_label
+        self.y_label = y_label
+
+    def generate_fig(self):
+        self.ax1.set_xlabel(self.x_label)
+        self.ax1.set_ylabel(self.y_label)
+        self.ax1.plot(self.data, self.y_data)
+
+
+class SoundPlot(PlotContainer):
     """docstring for SoundPlot"""
     COLORBAR_FORMAT_DB = '%+02.0f dB'
     MAX_NUMBER_OF_PLOTS = 10
 
-    def __init__(self, num_of_rows, samplerate, fig_width=6, fig_height=6):
-        super(SoundPlot, self).__init__()
-        self.num_of_rows = num_of_rows
+    def __init__(self, title, data, output_path, samplerate,
+                 colorbar_format=None, **specshow_kwargs):
+
+        super(SoundPlot, self).__init__(title, data, output_path)
         self.samplerate = samplerate
-        self.fig_width = fig_width
-        self.fig_height = fig_height
+        self.colorbar_format = colorbar_format
+        self.specshow_kwargs = specshow_kwargs
 
-    def __enter__(self):
-        self.fig = plt.figure()
-        self.subplot_index = 1
-        return self
-
-    def append(self, plot_obj):
-
-        self.fig.set_size_inches(self.fig_width,
-                                 self.subplot_index * self.fig_height)
-
-        subplot = self.fig.add_subplot(self.num_of_rows, 1, self.subplot_index)
-        self.subplot_index += 1
-
+    def generate_fig(self):
         librosa.display.specshow(
-            plot_obj.data, sr=self.samplerate, **plot_obj.kwargs)
+            self.data, sr=self.samplerate, **self.specshow_kwargs)
 
-        subplot.title.set_text(plot_obj.title)
-        plt.colorbar(format=plot_obj.colorbar_format)
-
-    def save_svg(self, output):
-        plt.tight_layout()
-        self.fig.savefig(output)
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        plt.close(self.fig)
+        plt.colorbar(format=self.colorbar_format)
