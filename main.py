@@ -5,7 +5,7 @@ from soundbarrier import SoundBarrierItem
 
 def get_song_info(args):
     for path in args.input:
-        with SoundBarrierItem(path) as sb:
+        with SoundBarrierItem(path, args.output) as sb:
             if args.bpm:
                 print "{} bpm is {}".format(sb.filename, sb.get_bpm())
             if args.graph:
@@ -34,7 +34,8 @@ this program analyzes music woot woot.
     parser.add_argument(
         "input", help="input file to analyze", nargs="+")
     parser.add_argument(
-        "--output", "-o", help="output dir to write files to")
+        "--output", "-o", help="output dir to write files to",
+        default="generated")
 
     subparsers = parser.add_subparsers()
     info_parser = subparsers.add_parser(

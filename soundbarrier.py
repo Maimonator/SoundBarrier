@@ -1,4 +1,5 @@
 import os
+import shutil
 import numpy as np
 import librosa
 from scipy import fftpack
@@ -81,6 +82,8 @@ class SoundBarrierItem(object):
 
         if output is not None:
             self.output = output
+            if not os.path.exists(self.output):
+                shutil.os.makedirs(self.output)
         else:
             self.output = os.path.dirname(input)
 
