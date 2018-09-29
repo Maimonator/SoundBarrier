@@ -9,9 +9,11 @@ def get_song_info(args):
             if args.bpm:
                 print "{} bpm is {}".format(sb.filename, sb.get_bpm())
             if args.graph:
-                print "{} graph saved to \"{}\"".format(sb.filename,
-                                                        sb.get_song_graph())
-
+                outputs = sb.get_song_graph()
+                for output in outputs:
+                    print "{} graph saved to \"{}\"".format(sb.filename,
+                                                            output)
+                    print "------------------"
             print "======================="
 
 
@@ -39,7 +41,7 @@ this program analyzes music woot woot.
 
     info_parser.add_argument(
         '--graph',
-        help="output SVG file containing different graphs",
+        help="output PNG files containing different graphs",
         action="store_true")
 
     info_parser.set_defaults(do=get_song_info)
