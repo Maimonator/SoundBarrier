@@ -19,10 +19,16 @@ def get_song_info(args):
 
 
 def compare_song(args):
-    for path in args.input:
-        with SoundBarrierItem(path, args.output) as sb1:
-            with SoundBarrierItem(args.song, args.output) as sb2:
-                print "Song score is {}".format(sb1.compare_to(sb2))
+    with SoundBarrierItem(args.song, args.output) as sb2:
+        for path in args.input:
+            with SoundBarrierItem(path, args.output) as sb1:
+                print "====================="
+                score, frame_diff = sb1.compare_to(sb2)
+                print """
+                For a song score of {}, song should start at {}(s) """.format(
+                    score,
+                    frame_diff)
+                print "---------------------"
 
 
 def flat_file_list(l):

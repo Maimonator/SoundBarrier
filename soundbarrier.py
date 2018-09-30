@@ -206,8 +206,17 @@ class SoundBarrierItem(CacheableItem):
         smooth_1 = np.append(smooth_1, np.zeros(
             len(smooth_2) - len(smooth_1)))
 
-        return SoundBarrierItem.compute_normalized_correlation(
+        corr_score = SoundBarrierItem.compute_normalized_correlation(
             smooth_1, smooth_2)
+
+        frame_diff = SoundBarrierItem.find_frame_diff_lag(smooth_1, smooth_2)
+        logger.debug("frame difference is {}".format(frame_diff))
+        if frame_diff > len(smooth_2) / 2:
+            frame_diff = len(smooth_2) - frame_diff
+
+        frame_diff = librosa.frames_to_time(frame_diff, sr=self.samplerate)
+
+        return corr_score, frame_diff
 
     def get_plot_output_path(self, plot_type=""):
         out_filename = "{fname}_{plot_type}.png".format(fname=self.filename,
