@@ -1,6 +1,8 @@
 import argparse
 import os
 from soundbarrier import SoundBarrierItem
+from glob import glob
+from itertools import chain
 
 
 def get_song_info(args):
@@ -22,6 +24,11 @@ def compare_song(args):
         with SoundBarrierItem(path) as sb1:
             with SoundBarrierItem(args.song) as sb2:
                 print "Song score is {}".format(sb1.compare_to(sb2))
+
+
+def flat_file_list(l):
+    files = [glob(i) for i in l]
+    return list(set(chain(*files)))
 
 
 def main():
@@ -65,6 +72,7 @@ this program analyzes music woot woot.
 
     diff_parser.set_defaults(do=compare_song)
     args = parser.parse_args()
+    args.input = flat_file_list(args.input)
     args.do(args)
 
 
