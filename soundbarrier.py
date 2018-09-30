@@ -276,7 +276,7 @@ class SoundBarrierItem(CacheableItem):
 
     def get_amp_plot(self):
         energy_per_frame = librosa.feature.rmse(y=self.ats)[0]
-        smooth_epf = smooth(energy_per_frame, (len(energy_per_frame) / 20) + 1)
+        smooth_epf = smooth(energy_per_frame)
 
         plot_obj = DataPlot('{} Amplitude Graph'.format(self.filename),
                             smooth_epf,
