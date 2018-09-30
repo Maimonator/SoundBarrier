@@ -15,12 +15,7 @@ def get_song_info(args):
             if args.bpm:
                 print "{} bpm is {}".format(sb.filename, sb.get_bpm())
             if args.graph:
-                outputs = sb.get_song_graph()
-                for output in outputs:
-                    print "{} graph saved to \"{}\"".format(sb.filename,
-                                                            output)
-                    print "------------------"
-            print "======================="
+                sb.get_song_graph(args.graph)
 
 
 def compare_song(args):
@@ -60,8 +55,10 @@ this program analyzes music woot woot.
 
     info_parser.add_argument(
         '--graph',
-        help="output PNG files containing different graphs",
-        action="store_true")
+        help="output PNG files containing different graphs accepts: 'harm'",
+        nargs="+",
+        choices=['amp', 'chroma', 'harm', 'perc'],
+        default=['amp'])
 
     info_parser.set_defaults(do=get_song_info)
 

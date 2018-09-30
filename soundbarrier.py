@@ -275,21 +275,18 @@ class SoundBarrierItem(CacheableItem):
 
         return plot_obj
 
-    def get_song_graph(self):
-        plots = []
-        plots.append(self.get_percussive_plot())
-        plots.append(self.get_harmonic_plot())
-        plots.append(self.get_chroma_plot())
-        plots.append(self.get_amp_plot())
+    def get_song_graph(self, plot_types):
+        plot_dict = {
+            'amp': SoundBarrierItem.get_amp_plot,
+            'perc': SoundBarrierItem.get_percussive_plot,
+            'harm': SoundBarrierItem.get_harmonic_plot,
+            'chrom': SoundBarrierItem.get_chroma_plot,
+        }
 
-        outputs = []
+        plots = [plot_dict[i](self) for i in plot_types]
+
         for plot in plots:
             with plot:
                 logger.info("generating plot \"%s\"", plot.title)
                 plot.generate_fig()
-                outputs.append(plot.save_plot())
-
-        return outputs
-
-    def __eq__(self, other):
-        return self.get_bpm() == other.get_bpm()
+                plot.save_plot()
