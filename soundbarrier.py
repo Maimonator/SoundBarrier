@@ -7,8 +7,14 @@ import cPickle
 
 from soundplot import SoundPlot, DataPlot
 
+import logging
 
-def smooth(x, window_len=51, window='hanning'):
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
+def smooth(x, window_len=101, window='hanning'):
     """Taken from https://scipy-cookbook.readthedocs.io/items/SignalSmooth.html
     smooth the data using a window with requested size.
 
@@ -113,9 +119,13 @@ class SoundBarrierItem(CacheableItem):
         self.cache_path = os.path.join(
             self.output, SoundBarrierItem.CACHE_DIR, cache_filename)
 
+        logger.info("initialized SoundBarrierItem from \"%s\"", input)
+
     def __getstate__(self):
         dic = {
             'ats': self.ats,
+            'ats_harmonic': self.ats_harmonic,
+            'ats_percussive': self.ats_percussive,
             'samplerate': self.samplerate,
             'input': self.input,
             'filename': self.filename,
@@ -130,18 +140,26 @@ class SoundBarrierItem(CacheableItem):
         self.__generate_members()
 
     def __generate_members(self):
-        self.ats_harmonic, self.ats_percussive = librosa.effects.hpss(
-            self.ats)
         self.tempo, self.beats = librosa.beat.beat_track(
             y=self.ats_percussive, sr=self.samplerate)
 
     def __enter__(self):
         try:
+            logger.info("reading cache from \"%s\"", self.cache_path)
             self = self.load_cache(self.cache_path)
-        except IOError:
+        except IOError, ex:
+            logger.debug("couldn't open cache path because %s", ex)
             self.ats, self.samplerate = librosa.load(self.input)
+            self.ats_harmonic, self.ats_percussive = librosa.effects.hpss(
+                self.ats)
             self.__generate_members()
 
+            logger.info(
+                "song {name} has estimated bpm [{bpm}]".format(
+                    name=self.filename,
+                    bpm=self.tempo))
+
+        logger.info("finished intializing \"%s\"", self.filename)
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
@@ -190,8 +208,17 @@ class SoundBarrierItem(CacheableItem):
         smooth_1 = np.append(smooth_1, np.zeros(
             len(smooth_2) - len(smooth_1)))
 
-        return SoundBarrierItem.compute_normalized_correlation(
+        corr_score = SoundBarrierItem.compute_normalized_correlation(
             smooth_1, smooth_2)
+
+        frame_diff = SoundBarrierItem.find_frame_diff_lag(smooth_1, smooth_2)
+        logger.debug("frame difference is {}".format(frame_diff))
+        if frame_diff > len(smooth_2) / 2:
+            frame_diff = len(smooth_2) - frame_diff
+
+        frame_diff = librosa.frames_to_time(frame_diff, sr=self.samplerate)
+
+        return corr_score, frame_diff
 
     def get_plot_output_path(self, plot_type=""):
         out_filename = "{fname}_{plot_type}.png".format(fname=self.filename,
@@ -249,7 +276,7 @@ class SoundBarrierItem(CacheableItem):
 
     def get_amp_plot(self):
         energy_per_frame = librosa.feature.rmse(y=self.ats)[0]
-        smooth_epf = smooth(energy_per_frame, (len(energy_per_frame) / 20) + 1)
+        smooth_epf = smooth(energy_per_frame)
 
         plot_obj = DataPlot('{} Amplitude Graph'.format(self.filename),
                             smooth_epf,
@@ -259,20 +286,18 @@ class SoundBarrierItem(CacheableItem):
 
         return plot_obj
 
-    def get_song_graph(self):
-        plots = []
-        plots.append(self.get_percussive_plot())
-        plots.append(self.get_harmonic_plot())
-        plots.append(self.get_chroma_plot())
-        plots.append(self.get_amp_plot())
+    def get_song_graph(self, plot_types):
+        plot_dict = {
+            'amp': SoundBarrierItem.get_amp_plot,
+            'perc': SoundBarrierItem.get_percussive_plot,
+            'harm': SoundBarrierItem.get_harmonic_plot,
+            'chrom': SoundBarrierItem.get_chroma_plot,
+        }
 
-        outputs = []
+        plots = [plot_dict[i](self) for i in plot_types]
+
         for plot in plots:
             with plot:
+                logger.info("generating plot \"%s\"", plot.title)
                 plot.generate_fig()
-                outputs.append(plot.save_plot())
-
-        return outputs
-
-    def __eq__(self, other):
-        return self.get_bpm() == other.get_bpm()
+                plot.save_plot()
