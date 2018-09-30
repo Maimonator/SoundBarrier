@@ -3,6 +3,7 @@ import shutil
 import numpy as np
 import librosa
 from scipy import fftpack
+import cPickle
 
 from soundplot import SoundPlot, DataPlot
 
@@ -68,12 +69,30 @@ def smooth(x, window_len=51, window='hanning'):
     return y
 
 
-class SoundBarrierItem(object):
+class CacheableItem(object):
+    """docstring for CacheableItem"""
+
+    def __init__(self):
+        super(CacheableItem, self).__init__()
+
+    def dump_cache(self, cache_path):
+        with open(cache_path, "wb") as w:
+            cPickle.dump(self, w)
+
+    def load_cache(self, cache_path):
+        with open(cache_path, "rb") as r:
+            return cPickle.load(r)
+
+
+class SoundBarrierItem(CacheableItem):
     """docstring for SoundBarrierItem"""
     PLOT_PREFIX_PERCUSSIVE = "percussive"
     PLOT_PREFIX_HARMONIC = "harmonic"
     PLOT_PREFIX_CHROMA = "chroma"
     PLOT_PREFIX_AMP = "amplitude"
+    CACHE_DIR = "cache"
+    CACHE_SUFFIX = "sbi"
+    PLOT_DIR = "plot"
 
     def __init__(self, input, output=None):
         super(SoundBarrierItem, self).__init__()
@@ -87,16 +106,47 @@ class SoundBarrierItem(object):
         else:
             self.output = os.path.dirname(input)
 
-    def __enter__(self):
-        self.ats, self.samplerate = librosa.load(self.input)
-        self.ats_harmonic, self.ats_percussive = librosa.effects.hpss(self.ats)
+        cache_filename = "{fname}.{suffix}".format(
+            fname=self.filename,
+            suffix=SoundBarrierItem.CACHE_SUFFIX)
+
+        self.cache_path = os.path.join(
+            self.output, SoundBarrierItem.CACHE_DIR, cache_filename)
+
+    def __getstate__(self):
+        dic = {
+            'ats': self.ats,
+            'samplerate': self.samplerate,
+            'input': self.input,
+            'filename': self.filename,
+            'output': self.output,
+            'cache_path': self.cache_path,
+        }
+
+        return dic
+
+    def __setstate__(self, dic):
+        self.__dict__.update(dic)
+        self.__generate_members()
+
+    def __generate_members(self):
+        self.ats_harmonic, self.ats_percussive = librosa.effects.hpss(
+            self.ats)
         self.tempo, self.beats = librosa.beat.beat_track(
             y=self.ats_percussive, sr=self.samplerate)
+
+    def __enter__(self):
+        try:
+            self = self.load_cache(self.cache_path)
+        except IOError:
+            self.ats, self.samplerate = librosa.load(self.input)
+            self.__generate_members()
 
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        pass
+        if not os.path.isfile(self.cache_path):
+            self.dump_cache(self.cache_path)
 
     def get_bpm(self):
         return self.tempo
