@@ -124,6 +124,8 @@ class SoundBarrierItem(CacheableItem):
     def __getstate__(self):
         dic = {
             'ats': self.ats,
+            'ats_harmonic': self.ats_harmonic,
+            'ats_percussive': self.ats_percussive,
             'samplerate': self.samplerate,
             'input': self.input,
             'filename': self.filename,
@@ -138,8 +140,6 @@ class SoundBarrierItem(CacheableItem):
         self.__generate_members()
 
     def __generate_members(self):
-        self.ats_harmonic, self.ats_percussive = librosa.effects.hpss(
-            self.ats)
         self.tempo, self.beats = librosa.beat.beat_track(
             y=self.ats_percussive, sr=self.samplerate)
 
@@ -150,6 +150,8 @@ class SoundBarrierItem(CacheableItem):
         except IOError, ex:
             logger.debug("couldn't open cache path because %s", ex)
             self.ats, self.samplerate = librosa.load(self.input)
+            self.ats_harmonic, self.ats_percussive = librosa.effects.hpss(
+                self.ats)
             self.__generate_members()
 
             logger.info(
