@@ -196,7 +196,9 @@ class SoundBarrierItem(CacheableItem):
     def get_plot_output_path(self, plot_type=""):
         out_filename = "{fname}_{plot_type}.png".format(fname=self.filename,
                                                         plot_type=plot_type)
-        return os.path.join(self.output, out_filename)
+        return os.path.join(self.output,
+                            SoundBarrierItem.PLOT_DIR,
+                            out_filename)
 
     def get_percussive_plot(self):
         db_percussive = SoundBarrierItem.ats_to_db(self.ats_percussive)
