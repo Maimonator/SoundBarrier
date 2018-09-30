@@ -21,8 +21,8 @@ def get_song_info(args):
 
 def compare_song(args):
     for path in args.input:
-        with SoundBarrierItem(path) as sb1:
-            with SoundBarrierItem(args.song) as sb2:
+        with SoundBarrierItem(path, args.output) as sb1:
+            with SoundBarrierItem(args.song, args.output) as sb2:
                 print "Song score is {}".format(sb1.compare_to(sb2))
 
 
