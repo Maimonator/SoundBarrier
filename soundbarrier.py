@@ -7,8 +7,14 @@ import cPickle
 
 from soundplot import SoundPlot, DataPlot
 
+import logging
 
-def smooth(x, window_len=51, window='hanning'):
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
+def smooth(x, window_len=101, window='hanning'):
     """Taken from https://scipy-cookbook.readthedocs.io/items/SignalSmooth.html
     smooth the data using a window with requested size.
 
@@ -113,6 +119,8 @@ class SoundBarrierItem(CacheableItem):
         self.cache_path = os.path.join(
             self.output, SoundBarrierItem.CACHE_DIR, cache_filename)
 
+        logger.info("initialized SoundBarrierItem from \"%s\"", input)
+
     def __getstate__(self):
         dic = {
             'ats': self.ats,
@@ -137,11 +145,19 @@ class SoundBarrierItem(CacheableItem):
 
     def __enter__(self):
         try:
+            logger.info("reading cache from \"%s\"", self.cache_path)
             self = self.load_cache(self.cache_path)
-        except IOError:
+        except IOError, ex:
+            logger.debug("couldn't open cache path because %s", ex)
             self.ats, self.samplerate = librosa.load(self.input)
             self.__generate_members()
 
+            logger.info(
+                "song {name} has estimated bpm [{bpm}]".format(
+                    name=self.filename,
+                    bpm=self.tempo))
+
+        logger.info("finished intializing \"%s\"", self.filename)
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
@@ -269,6 +285,7 @@ class SoundBarrierItem(CacheableItem):
         outputs = []
         for plot in plots:
             with plot:
+                logger.info("generating plot \"%s\"", plot.title)
                 plot.generate_fig()
                 outputs.append(plot.save_plot())
 

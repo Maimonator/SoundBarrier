@@ -3,6 +3,10 @@ import os
 from soundbarrier import SoundBarrierItem
 from glob import glob
 from itertools import chain
+import logging
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
 
 
 def get_song_info(args):
