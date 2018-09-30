@@ -1,11 +1,14 @@
 import os
+import shutil
 import numpy as np
 import librosa
+from scipy import fftpack
+import cPickle
 
 from soundplot import SoundPlot, DataPlot
 
 
-def smooth(x, window_len=11, window='hanning'):
+def smooth(x, window_len=51, window='hanning'):
     """Taken from https://scipy-cookbook.readthedocs.io/items/SignalSmooth.html
     smooth the data using a window with requested size.
 
@@ -66,35 +69,84 @@ def smooth(x, window_len=11, window='hanning'):
     return y
 
 
-class SoundBarrier(object):
-    """docstring for SoundBarrier"""
+class CacheableItem(object):
+    """docstring for CacheableItem"""
+
+    def __init__(self):
+        super(CacheableItem, self).__init__()
+
+    def dump_cache(self, cache_path):
+        with open(cache_path, "wb") as w:
+            cPickle.dump(self, w)
+
+    def load_cache(self, cache_path):
+        with open(cache_path, "rb") as r:
+            return cPickle.load(r)
+
+
+class SoundBarrierItem(CacheableItem):
+    """docstring for SoundBarrierItem"""
     PLOT_PREFIX_PERCUSSIVE = "percussive"
     PLOT_PREFIX_HARMONIC = "harmonic"
     PLOT_PREFIX_CHROMA = "chroma"
     PLOT_PREFIX_AMP = "amplitude"
-
-    NUM_OF_GRAPHS = 3
+    CACHE_DIR = "cache"
+    CACHE_SUFFIX = "sbi"
+    PLOT_DIR = "plot"
 
     def __init__(self, input, output=None):
-        super(SoundBarrier, self).__init__()
+        super(SoundBarrierItem, self).__init__()
         self.input = input
         self.filename, _ = os.path.splitext(os.path.basename(input))
 
         if output is not None:
             self.output = output
+            if not os.path.exists(self.output):
+                shutil.os.makedirs(self.output)
         else:
             self.output = os.path.dirname(input)
 
-    def __enter__(self):
-        self.ats, self.samplerate = librosa.load(self.input)
-        self.ats_harmonic, self.ats_percussive = librosa.effects.hpss(self.ats)
+        cache_filename = "{fname}.{suffix}".format(
+            fname=self.filename,
+            suffix=SoundBarrierItem.CACHE_SUFFIX)
+
+        self.cache_path = os.path.join(
+            self.output, SoundBarrierItem.CACHE_DIR, cache_filename)
+
+    def __getstate__(self):
+        dic = {
+            'ats': self.ats,
+            'samplerate': self.samplerate,
+            'input': self.input,
+            'filename': self.filename,
+            'output': self.output,
+            'cache_path': self.cache_path,
+        }
+
+        return dic
+
+    def __setstate__(self, dic):
+        self.__dict__.update(dic)
+        self.__generate_members()
+
+    def __generate_members(self):
+        self.ats_harmonic, self.ats_percussive = librosa.effects.hpss(
+            self.ats)
         self.tempo, self.beats = librosa.beat.beat_track(
             y=self.ats_percussive, sr=self.samplerate)
+
+    def __enter__(self):
+        try:
+            self = self.load_cache(self.cache_path)
+        except IOError:
+            self.ats, self.samplerate = librosa.load(self.input)
+            self.__generate_members()
 
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        pass
+        if not os.path.isfile(self.cache_path):
+            self.dump_cache(self.cache_path)
 
     def get_bpm(self):
         return self.tempo
@@ -104,18 +156,57 @@ class SoundBarrier(object):
         return librosa.power_to_db(librosa.feature.melspectrogram(ats),
                                    ref=np.max)
 
+    def get_energy_per_frame(self):
+        energy_per_frame = librosa.feature.rmse(y=self.ats)[0]
+
+        return energy_per_frame
+
+    @staticmethod
+    def find_frame_diff_lag(arr1, arr2):
+        """
+        This function returns how much arr2 should be rotated right
+        for maximum correlation
+        """
+
+        fft_arr1 = fftpack.fft(arr1)
+        fft_arr2 = fftpack.fft(arr2)
+        conjugated_arr2 = -fft_arr2.conjugate()
+        return np.argmax(np.abs(fftpack.ifft(fft_arr1 * conjugated_arr2)))
+
+    @staticmethod
+    def compute_normalized_correlation(arr1, arr2):
+        d_corr = np.sqrt(
+            sum(arr1 ** 2) *
+            sum(arr2 ** 2))
+        return float(
+            np.correlate(arr1, arr2, 'valid') / d_corr)
+
+    def compare_to(self, other):
+        short_epf, long_epf = sorted((self.get_energy_per_frame(),
+                                      other.get_energy_per_frame()),
+                                     key=lambda x: len(x))
+        smooth_1 = smooth(short_epf)
+        smooth_2 = smooth(long_epf)
+        smooth_1 = np.append(smooth_1, np.zeros(
+            len(smooth_2) - len(smooth_1)))
+
+        return SoundBarrierItem.compute_normalized_correlation(
+            smooth_1, smooth_2)
+
     def get_plot_output_path(self, plot_type=""):
         out_filename = "{fname}_{plot_type}.png".format(fname=self.filename,
                                                         plot_type=plot_type)
-        return os.path.join(self.output, out_filename)
+        return os.path.join(self.output,
+                            SoundBarrierItem.PLOT_DIR,
+                            out_filename)
 
     def get_percussive_plot(self):
-        db_percussive = SoundBarrier.ats_to_db(self.ats_percussive)
+        db_percussive = SoundBarrierItem.ats_to_db(self.ats_percussive)
 
         plot_obj = SoundPlot('{} Percussive'.format(self.filename),
                              db_percussive,
                              self.get_plot_output_path(
-            SoundBarrier.PLOT_PREFIX_PERCUSSIVE),
+            SoundBarrierItem.PLOT_PREFIX_PERCUSSIVE),
             self.samplerate,
             SoundPlot.COLORBAR_FORMAT_DB,
             x_axis='time',
@@ -124,12 +215,12 @@ class SoundBarrier(object):
         return plot_obj
 
     def get_harmonic_plot(self):
-        db_harmonic = SoundBarrier.ats_to_db(self.ats_harmonic)
+        db_harmonic = SoundBarrierItem.ats_to_db(self.ats_harmonic)
 
         plot_obj = SoundPlot('{} Harmonic'.format(self.filename),
                              db_harmonic,
                              self.get_plot_output_path(
-            SoundBarrier.PLOT_PREFIX_HARMONIC),
+            SoundBarrierItem.PLOT_PREFIX_HARMONIC),
             self.samplerate,
             SoundPlot.COLORBAR_FORMAT_DB,
             x_axis='time',
@@ -147,25 +238,23 @@ class SoundBarrier(object):
         plot_obj = SoundPlot('{} Beat Sync Chroma'.format(self.filename),
                              c_sync,
                              self.get_plot_output_path(
-            SoundBarrier.PLOT_PREFIX_CHROMA),
+            SoundBarrierItem.PLOT_PREFIX_CHROMA),
             self.samplerate,
             y_axis='chroma',
             vmin=0.0,
             vmax=1.0,
             x_coords=librosa.frames_to_time(fixed_beats))
+
         return plot_obj
 
     def get_amp_plot(self):
-        onset_env = librosa.onset.onset_strength(y=self.ats_percussive,
-                                                 sr=self.samplerate,
-                                                 aggregate=np.median)
-
-        smoothed_onset = smooth(onset_env, (len(onset_env) / 20) + 1)
+        energy_per_frame = librosa.feature.rmse(y=self.ats)[0]
+        smooth_epf = smooth(energy_per_frame, (len(energy_per_frame) / 20) + 1)
 
         plot_obj = DataPlot('{} Amplitude Graph'.format(self.filename),
-                            smoothed_onset,
+                            smooth_epf,
                             self.get_plot_output_path(
-                                SoundBarrier.PLOT_PREFIX_AMP),
+                                SoundBarrierItem.PLOT_PREFIX_AMP),
                             "Amplitude")
 
         return plot_obj
