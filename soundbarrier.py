@@ -156,12 +156,10 @@ class SoundBarrierItem(CacheableItem):
         return librosa.power_to_db(librosa.feature.melspectrogram(ats),
                                    ref=np.max)
 
-    def get_strength_onset(self):
-        strength_onset = librosa.onset.onset_strength(self.ats,
-                                                      sr=self.samplerate,
-                                                      aggregate=np.median)
+    def get_energy_per_frame(self):
+        energy_per_frame = librosa.feature.rmse(y=self.ats)[0]
 
-        return strength_onset
+        return energy_per_frame
 
     @staticmethod
     def find_frame_diff_lag(arr1, arr2):
@@ -184,11 +182,11 @@ class SoundBarrierItem(CacheableItem):
             np.correlate(arr1, arr2, 'valid') / d_corr)
 
     def compare_to(self, other):
-        smaller_onset, larger_onset = sorted((self.get_strength_onset(),
-                                              other.get_strength_onset()),
-                                             key=lambda x: len(x))
-        smooth_1 = smooth(smaller_onset)
-        smooth_2 = smooth(larger_onset)
+        short_epf, long_epf = sorted((self.get_energy_per_frame(),
+                                      other.get_energy_per_frame()),
+                                     key=lambda x: len(x))
+        smooth_1 = smooth(short_epf)
+        smooth_2 = smooth(long_epf)
         smooth_1 = np.append(smooth_1, np.zeros(
             len(smooth_2) - len(smooth_1)))
 
@@ -248,14 +246,11 @@ class SoundBarrierItem(CacheableItem):
         return plot_obj
 
     def get_amp_plot(self):
-        onset_env = librosa.onset.onset_strength(y=self.ats_percussive,
-                                                 sr=self.samplerate,
-                                                 aggregate=np.median)
-
-        smoothed_onset = smooth(onset_env, (len(onset_env) / 20) + 1)
+        energy_per_frame = librosa.feature.rmse(y=self.ats)[0]
+        smooth_epf = smooth(energy_per_frame, (len(energy_per_frame) / 20) + 1)
 
         plot_obj = DataPlot('{} Amplitude Graph'.format(self.filename),
-                            smoothed_onset,
+                            smooth_epf,
                             self.get_plot_output_path(
                                 SoundBarrierItem.PLOT_PREFIX_AMP),
                             "Amplitude")
