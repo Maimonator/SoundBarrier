@@ -2,3 +2,5 @@ numpy
 matplotlib
 ipython
 librosa
+ez_setup
+setuptools>=40
