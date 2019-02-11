@@ -26,8 +26,9 @@ def compare_song(args):
                 print "====================="
                 score, time_diff = sb1.compare_to(sb2)
                 print """
-For a song score of {}, song should start at {}(s) """.format(
-                    score,
+{}: For a song score of {}, song should start at {}(s) """.format(
+                    sb1.filename
+                    ,score,
                     time_diff)
                 print "---------------------"
 
@@ -39,7 +40,7 @@ def create_video(args):
                 print "====================="
                 score, time_diff = sb1.compare_to(sb2)
                 print """
-For a song score of {}, song should start at {}(s) """.format(
+{} For a song score of {}, song should start at {}(s) """.format(sb2.filename,
                     score,
                     time_diff)
                 print "---------------------"
