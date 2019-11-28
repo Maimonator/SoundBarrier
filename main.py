@@ -14,7 +14,7 @@ def get_song_info(args):
     for path in args.input:
         with SoundBarrierItem(path, args.output) as sb:
             if args.bpm:
-                print "{} bpm is {}".format(sb.filename, sb.get_bpm())
+                print("{} bpm is {}".format(sb.filename, sb.get_bpm()))
             if args.graph:
                 sb.get_song_graph(args.graph)
 
@@ -23,27 +23,27 @@ def compare_song(args):
     with SoundBarrierItem(args.song, args.output) as sb2:
         for path in args.input:
             with SoundBarrierItem(path, args.output) as sb1:
-                print "====================="
+                print("=====================")
                 score, time_diff = sb1.compare_to(sb2)
-                print """
+                print("""
 {}: For a song score of {}, song should start at {}(s) """.format(
                     sb1.filename
                     ,score,
-                    time_diff)
-                print "---------------------"
+                    time_diff))
+                print("---------------------")
 
 
 def create_video(args):
     with SoundBarrierItem(args.song, args.output) as sb2:
         for path in args.input:
             with SoundBarrierItem(path, args.output) as sb1:
-                print "====================="
+                print("=====================")
                 score, time_diff = sb1.compare_to(sb2)
-                print """
+                print("""
 {} For a song score of {}, song should start at {}(s) """.format(sb2.filename,
                     score,
-                    time_diff)
-                print "---------------------"
+                    time_diff))
+                print("---------------------")
 
     with VideoBarrier(args.clip, args.output, args.song) as vb:
         vb.set_audio(time_diff, time_diff + args.duration)

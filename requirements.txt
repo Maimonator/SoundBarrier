@@ -1,6 +1,7 @@
 numpy
 matplotlib
 ipython
-librosa
+librosa==0.6.0
 ez_setup
 setuptools>=40
+moviepy==1.0.0

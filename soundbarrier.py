@@ -3,7 +3,7 @@ import shutil
 import numpy as np
 import librosa
 from scipy import fftpack
-import cPickle
+import _pickle as cPickle
 
 from soundplot import SoundPlot, DataPlot
 
@@ -147,7 +147,7 @@ class SoundBarrierItem(CacheableItem):
         try:
             logger.info("reading cache from \"%s\"", self.cache_path)
             self = self.load_cache(self.cache_path)
-        except IOError, ex:
+        except IOError as ex:
             logger.debug("couldn't open cache path because %s", ex)
             self.ats, self.samplerate = librosa.load(self.input)
             self.ats_harmonic, self.ats_percussive = librosa.effects.hpss(
